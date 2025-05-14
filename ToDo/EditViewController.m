@@ -68,14 +68,10 @@
 //            [self alertForEmptyTitleOrDescription];\
 //            return;
 //        }
-//        if(self.title.length==0|| self.description.length==0){
-//            [self alertForEmptyTitleOrDescription];
-//            return;
-//        }else{
-//            [self saveTasks];
-//            [self updateNotificationForTask:self.taskToEdit];
-//
-//        }
+        if(self.titleEdit.text.length==0|| self.descEdit.text.length==0){
+            [self alertForEmptyTitleOrDescription];
+            return;
+        }
         
         self.taskToEdit.title = self.titleEdit.text;
         self.taskToEdit.taskDescription = self.descEdit.text;

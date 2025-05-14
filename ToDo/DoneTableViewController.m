@@ -116,7 +116,6 @@
     }
 }
 
-
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
     NSArray *filtered = [self filteredTasksForSection:indexPath.section];
     if (indexPath.row < filtered.count) {
@@ -139,7 +138,6 @@
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
 }
 
-
 - (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath {
     return YES;
 }
@@ -157,9 +155,35 @@
             UIAlertAction *yes = [UIAlertAction actionWithTitle:@"Yes"
                                                           style:UIAlertActionStyleDestructive
                                                         handler:^(UIAlertAction * _Nonnull action) {
-                [self.tasks removeObject:taskToDelete];
-                [self.tableView reloadData];
+                // Load all tasks
+                NSData *savedData = [[NSUserDefaults standardUserDefaults] objectForKey:@"savedTasks"];
+                if (!savedData) return;
+                
+                NSSet *classes = [NSSet setWithArray:@[NSArray.class, TaskPojo.class]];
+                NSMutableArray<TaskPojo *> *allTasks = [[NSKeyedUnarchiver unarchivedObjectOfClasses:classes fromData:savedData error:nil] mutableCopy];
+                
+                // Find and remove matching task
+                for (TaskPojo *task in allTasks) {
+                    if ([task.title isEqualToString:taskToDelete.title] &&
+                        [task.taskDescription isEqualToString:taskToDelete.taskDescription] &&
+                        [task.startDate isEqualToDate:taskToDelete.startDate] &&
+                        task.priority == taskToDelete.priority &&
+                        task.status == taskToDelete.status) {
+                        
+                        [allTasks removeObject:task];
+                        break;
+                    }
+                }
+                
+                // Save updated list
+                NSData *updatedData = [NSKeyedArchiver archivedDataWithRootObject:allTasks requiringSecureCoding:NO error:nil];
+                [[NSUserDefaults standardUserDefaults] setObject:updatedData forKey:@"savedTasks"];
+                [[NSUserDefaults standardUserDefaults] synchronize];
+                
+                // Reload filtered tasks
+                [self loadTasks];
             }];
+            
             UIAlertAction *no = [UIAlertAction actionWithTitle:@"Cancel"
                                                          style:UIAlertActionStyleCancel
                                                        handler:nil];
@@ -169,8 +193,5 @@
         }
     }
 }
-
-
-
 
 @end
