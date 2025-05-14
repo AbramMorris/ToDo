@@ -6,11 +6,11 @@
 //
 
 #import <UIKit/UIKit.h>
-
-NS_ASSUME_NONNULL_BEGIN
+#import "TaskPojo.h"
 
 @interface EditViewController : UIViewController
 
-@end
+@property (nonatomic, strong) TaskPojo *taskToEdit;
+@property (nonatomic, strong) NSMutableArray<TaskPojo*> *arr;
 
-NS_ASSUME_NONNULL_END
+@end

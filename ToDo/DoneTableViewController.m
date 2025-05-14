@@ -6,8 +6,14 @@
 //
 
 #import "DoneTableViewController.h"
+#import "TaskPojo.h"
+#import "TableViewCell.h"
+#import "EditViewController.h"
 
-@interface DoneTableViewController ()
+@interface DoneTableViewController () <UITableViewDelegate, UITableViewDataSource>
+
+@property NSMutableArray<TaskPojo *> *tasks;
+@property (nonatomic) BOOL isSorted;
 
 @end
 
@@ -16,77 +22,155 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
-    // Uncomment the following line to preserve selection between presentations.
-    // self.clearsSelectionOnViewWillAppear = NO;
+    self.title = @"Done Tasks";
+    [self.tableView registerNib:[UINib nibWithNibName:@"TableViewCell" bundle:nil]
+         forCellReuseIdentifier:@"tabelCell"];
     
-    // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
-    // self.navigationItem.rightBarButtonItem = self.editButtonItem;
+    self.tableView.delegate = self;
+    self.tableView.dataSource = self;
+    
+    self.isSorted = YES;
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc]
+        initWithTitle:@"Unsort"
+                style:UIBarButtonItemStylePlain
+               target:self
+               action:@selector(toggleSort)];
 }
 
-#pragma mark - Table view data source
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    [self loadTasks];
+}
+
+- (void)toggleSort {
+    self.isSorted = !self.isSorted;
+    self.navigationItem.rightBarButtonItem.title = self.isSorted ? @"Unsort" : @"Sort";
+    [self.tableView reloadData];
+}
+
+- (void)loadTasks {
+    NSData *data = [[NSUserDefaults standardUserDefaults] objectForKey:@"savedTasks"];
+    if (data) {
+        NSSet *classes = [NSSet setWithArray:@[NSArray.class, TaskPojo.class]];
+        NSArray *allTasks = [NSKeyedUnarchiver unarchivedObjectOfClasses:classes fromData:data error:nil];
+        NSPredicate *donePredicate = [NSPredicate predicateWithBlock:^BOOL(TaskPojo *task, NSDictionary *bindings) {
+            return task.status == TaskStatusDone;
+        }];
+        self.tasks = [[allTasks filteredArrayUsingPredicate:donePredicate] mutableCopy];
+    } else {
+        self.tasks = [NSMutableArray array];
+    }
+    [self.tableView reloadData];
+}
+
+#pragma mark - TableView DataSource
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
-#warning Incomplete implementation, return the number of sections
-    return 0;
+    return self.isSorted ? 3 : 1;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-#warning Incomplete implementation, return the number of rows
-    return 0;
+    NSPredicate *predicate = [NSPredicate predicateWithBlock:^BOOL(TaskPojo *task, NSDictionary *bindings) {
+        return task.status == TaskStatusDone && (self.isSorted ? task.priority == section : YES);
+    }];
+    return [[self.tasks filteredArrayUsingPredicate:predicate] count];
 }
 
-/*
+- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
+    if (!self.isSorted) return nil;
+    switch (section) {
+        case TaskPriorityLow: return @"Low Priority";
+        case TaskPriorityMedium: return @"Medium Priority";
+        case TaskPriorityHigh: return @"High Priority";
+        default: return @"";
+    }
+}
+
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:<#@"reuseIdentifier"#> forIndexPath:indexPath];
+    TableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"tabelCell" forIndexPath:indexPath];
     
-    // Configure the cell...
-    
+    NSArray *filtered = [self filteredTasksForSection:indexPath.section];
+    if (indexPath.row < filtered.count) {
+        TaskPojo *task = filtered[indexPath.row];
+        [cell configureWithTitle:task.title
+                     description:task.taskDescription
+                            date:task.startDate
+                           image:[self priorityImageForTask:task]];
+    }
     return cell;
 }
-*/
 
-/*
-// Override to support conditional editing of the table view.
+- (NSArray<TaskPojo *> *)filteredTasksForSection:(NSInteger)section {
+    NSPredicate *predicate = [NSPredicate predicateWithBlock:^BOOL(TaskPojo *task, NSDictionary *bindings) {
+        return task.status == TaskStatusDone && (self.isSorted ? task.priority == section : YES);
+    }];
+    return [self.tasks filteredArrayUsingPredicate:predicate];
+}
+
+- (UIImage *)priorityImageForTask:(TaskPojo *)task {
+    switch (task.priority) {
+        case TaskPriorityLow: return [UIImage imageNamed:@"less"];
+        case TaskPriorityMedium: return [UIImage imageNamed:@"mid"];
+        case TaskPriorityHigh: return [UIImage imageNamed:@"imp"];
+        default: return nil;
+    }
+}
+
+
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
+    NSArray *filtered = [self filteredTasksForSection:indexPath.section];
+    if (indexPath.row < filtered.count) {
+        TaskPojo *task = filtered[indexPath.row];
+        return [TableViewCell heightForCellWithTitle:task.title
+                                         description:task.taskDescription
+                                          tableWidth:tableView.frame.size.width];
+    }
+    return 44.0;
+}
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    NSArray *filtered = [self filteredTasksForSection:indexPath.section];
+    if (indexPath.row < filtered.count) {
+        TaskPojo *task = filtered[indexPath.row];
+        EditViewController *eVC = [self.storyboard instantiateViewControllerWithIdentifier:@"edit"];
+        eVC.taskToEdit = task;
+        [self.navigationController pushViewController:eVC animated:YES];
+    }
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+}
+
+
 - (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath {
-    // Return NO if you do not want the specified item to be editable.
     return YES;
 }
-*/
 
-/*
-// Override to support editing the table view.
-- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath {
+- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle
+ forRowAtIndexPath:(NSIndexPath *)indexPath {
     if (editingStyle == UITableViewCellEditingStyleDelete) {
-        // Delete the row from the data source
-        [tableView deleteRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
-    } else if (editingStyle == UITableViewCellEditingStyleInsert) {
-        // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
-    }   
+        NSArray *filtered = [self filteredTasksForSection:indexPath.section];
+        if (indexPath.row < filtered.count) {
+            TaskPojo *taskToDelete = filtered[indexPath.row];
+            
+            UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Delete Task"
+                                                                           message:@"Are you sure you want to delete this task?"
+                                                                    preferredStyle:UIAlertControllerStyleAlert];
+            UIAlertAction *yes = [UIAlertAction actionWithTitle:@"Yes"
+                                                          style:UIAlertActionStyleDestructive
+                                                        handler:^(UIAlertAction * _Nonnull action) {
+                [self.tasks removeObject:taskToDelete];
+                [self.tableView reloadData];
+            }];
+            UIAlertAction *no = [UIAlertAction actionWithTitle:@"Cancel"
+                                                         style:UIAlertActionStyleCancel
+                                                       handler:nil];
+            [alert addAction:yes];
+            [alert addAction:no];
+            [self presentViewController:alert animated:YES completion:nil];
+        }
+    }
 }
-*/
 
-/*
-// Override to support rearranging the table view.
-- (void)tableView:(UITableView *)tableView moveRowAtIndexPath:(NSIndexPath *)fromIndexPath toIndexPath:(NSIndexPath *)toIndexPath {
-}
-*/
 
-/*
-// Override to support conditional rearranging of the table view.
-- (BOOL)tableView:(UITableView *)tableView canMoveRowAtIndexPath:(NSIndexPath *)indexPath {
-    // Return NO if you do not want the item to be re-orderable.
-    return YES;
-}
-*/
 
-/*
-#pragma mark - Navigation
-
-// In a storyboard-based application, you will often want to do a little preparation before navigation
-- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
-    // Get the new view controller using [segue destinationViewController].
-    // Pass the selected object to the new view controller.
-}
-*/
 
 @end

@@ -2,15 +2,14 @@
 //  AddTaskViewController.h
 //  ToDo
 //
-//  Created by abram on 06/05/2025.
+//  Created by abram on 07/05/2025.
 //
 
 #import <UIKit/UIKit.h>
-
-NS_ASSUME_NONNULL_BEGIN
+#import "TaskPojo.h"
 
 @interface AddTaskViewController : UIViewController
 
-@end
+@property (nonatomic, copy) void (^onTaskAdded)(TaskPojo *task);
 
-NS_ASSUME_NONNULL_END
+@end
